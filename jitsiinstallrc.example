@@ -1,0 +1,49 @@
+# Hostname for this meet installation
+FULLY_QUALIFIED_HOSTNAME=meet.example.com
+
+# Set to true to keep SSH port open in firewall
+FIREWALL_ENABLE_SSH=true
+
+#
+# Leave values for OPTIONAL attributes empty or comment out if not needed
+#
+
+# OPTIONAL:
+# Hooks to execute pre or post install; post install hook will also run on boot
+#HOOKS_POST_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_PRE_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_WAIT_TIME=121
+
+
+# OPTIONAL:
+# If none of the following SSL config is provided,
+# a self-signed certificate will be created
+# Provide email for letsencrypt (requires correct DNS entry)
+#SSL_LETSENCRYPT_EMAIL=admin@example.com
+# Alternatively, provide base64 encoded keys and certificates (without linebreaks)
+#SSL_CERTIFICATE_CRT='base64 encoded key without linebreaks'
+#SSL_CERTIFICATE_KEY='base64 encoded key without linebreaks'
+
+
+# OPTIONAL:
+# When a username and password provided here, only that user will be able to
+# create or start a meeting.
+#JITSI_MEETING_CREATOR_USERNAME=host
+#JITSI_MEETING_CREATOR_PASSWORD=pass123
+
+
+# OPTIONAL:
+# Original dimensions 612x272 px
+#JITSI_WATERMARK_IMAGE_URL=https://github.com/jitsi/jitsi-meet/raw/master/images/watermark.png
+# Various jitsi meet options (see https://meet.jit.si/config.js)
+#JITSI_ENABLE_WELCOME_PAGE=false
+#JITSI_START_AUDIO_MUTED=4
+#JITSI_START_VIDEO_MUTED=10
+#JITSI_REQUIRE_DISPLAY_NAME=true
+
+
+# OPTIONAL:
+# Phone dial in configuration (not implemented yet)
+#DIALIN_SIP_ACCOUNT_UID=12345@sip-provider.net
+#DIALIN_SIP_PASSWORD=PASSWORD
+#DIALIN_PSTN_NUMBERS='+1.212.345.6789,+49.30.4567890'
