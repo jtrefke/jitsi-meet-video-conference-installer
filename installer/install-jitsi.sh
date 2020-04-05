@@ -26,7 +26,7 @@ main() {
   log "Install dependencies..."; install_dependencies
   log "Install Jitsi..."; install_jitsi
   log "Setup Jitsi SIP dialin..."; install_phone_dialin
-  log "Install ssl certificate..."; install_ssl_certificate
+  log "Install SSL certificate..."; install_ssl_certificate
   log "Enable Jitsi user authentication..."; enable_authentication
   log "Tweaking Jitsi config..."; tweak_config
 
@@ -251,7 +251,7 @@ invoke_hook() {
 
   is_command_present curl || os_pkg_install curl
   curl -sL "$(hook_content "${name}")"
-  log "Waiting for ${HOOKS_WAIT_TIME} seconds..."
+  log "Waiting for ${HOOKS_WAIT_TIME:-} seconds..."
   sleep ${HOOKS_WAIT_TIME:-0}
 }
 
@@ -266,13 +266,15 @@ persist_hook() {
   local event="${2}"
 
   is_hook_provided "${name}" || return 0
-  {
-    crontab -l 2>/dev/null; echo "@${event} $(command -v curl) -sL '$(hook_content "${name}")'"
-  } | crontab -
+  (
+    crontab -l 2>/dev/null || true
+    echo "@${event} $(command -v curl) -sL '$(hook_content "${name}")'"
+  ) | crontab -
 }
 
 get_fully_qualified_hostname() {
-  local ec2_hostname; ec2_hostname=$(curl --connect-timeout 1 -s http://169.254.169.254/2019-10-01/meta-data/public-hostname || true)
+  local ec2_hostname
+  ec2_hostname=$(curl --connect-timeout 1 -s http://169.254.169.254/2019-10-01/meta-data/public-hostname || true)
   ec2_hostname=${ec2_hostname:-$(hostname)}
 
   echo "${FULLY_QUALIFIED_HOSTNAME:-${ec2_hostname}}"
