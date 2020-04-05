@@ -1,27 +1,46 @@
 # Jitsi Meet Video Conference Installer
 
-This project includes a selection of scripts to facilitate the installation of 
+This project is standalone, fully automated, configurable installer for 
 [Jitsi](https://jitsi.org/) from the official Debian packages. 
-In addition to that, it provides some configuration options to quickly and 
+It provides some configuration options to quickly and 
 repeatedly get your own out-of-the-box video conferencing server.
 
-It will most likely work on any Debian-based system, however, it was only
-(successfully) tested on Ubuntu 18.04.
+The installer will most likely work on any Debian-based system, however, it was 
+only tested with Ubuntu 18.04.
 
 It is mainly meant for disposable, temporary personal use on the Internet or 
 for use in private networks as security, scalability, or optimized asset delivery 
 has not been a main consideration in the implementation so far.
 
-## Getting started
+## Running the automated Jitsi meet installer
 
-Create a `jitsiinstallrc` file in the project root by copying the
-`jitsiinstallrc.example` file and adjust the the configuration options as needed.
+Get the latest release/code:
+```
+# Download latest release:
+latest_tarball=$(curl -s https://api.github.com/repos/jtrefke/jitsi-meet-video-conference-installer/releases/latest | sed -En 's/.*tarball_url.+(http[^"]+).*/\1/p')
+curl -sL "${latest_tarball}" | tar -xzf -
+cd jtrefke-jitsi-meet-video-conference-installer-*
+
+# alternatively clone the repository with git:
+git clone git@github.com:jtrefke/jitsi-meet-video-conference-installer.git
+cd jitsi-meet-video-conference-installer
+
+# Create an installer configuration to be edited
+cp ./jitsiinstallrc.example ./jitsiinstallrc
+```
+
+Setting up a Jitsi server with this automated installer only requires the 
+following 3 steps:
+
+1. Create a `jitsiinstallrc` file in the project root by copying the
+`jitsiinstallrc.example` file
+1. Adjust the configuration options as needed.
 Most configuration options are optional. If no value is provided, the defaults
 will be used/no changes will be made.
+1. Run the installer as root or using `sudo`: `./installer/install-jitsi.sh`
 
-Subsequently run the installer script: `installer/install-jitsi.sh`
 
-**Vagrant**
+## Test/develop locally using Vagrant
 
 With `vagrant` installed, simply run `vagrant up` to create a virtual machine
 that will automatically run the installer on boot.
@@ -33,6 +52,19 @@ IP address, for instance by executing:
 source jitsiinstallrc
 echo "10.0.3.33 ${FULLY_QUALIFIED_HOSTNAME}" >> /etc/hosts
 ```
+
+**Note:** When running it locally the SSL setup using letsencrypt will not work 
+unless the host is reachable through the internet using the provided domain name.
+
+## What's installed/configured?
+
+The automated installer will setup:
+
+- Hostname
+- Firewall ports for Jitsi using `ufw`
+- Jitsi using Java 8 behind nginx
+- SSL certificate (using )
+- Selected Jitsi configuration options
 
 ### Configuration features
 
