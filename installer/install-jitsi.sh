@@ -6,6 +6,8 @@ INSTALL_ROOT="$(dirname "${SCRIPT_DIR}")"
 JITSIRC_PATH="${INSTALL_ROOT}/jitsiinstallrc"
 CONFIG_PATH="${INSTALL_ROOT}/configs"
 
+export DEBIAN_FRONTEND=noninteractive
+
 main() {
   [ "$(id -u)" = "0" ] || die "This script must be executed as root!"
   [ -s "${JITSIRC_PATH}" ] || die "jitsi installer config not found at '${JITSIRC_PATH}'!"
@@ -19,6 +21,7 @@ main() {
   log "Setup hostname..."; setup_hostname
   log "Setup firewall..."; setup_firewall
   log "Update system..."; update_system
+  log "Enable automatic security updates..."; enable_unattended_updates
   log "Configure systemd process limits..."; configure_systemd_process_limits
 
   log "Invoking pre install hooks..."; invoke_hook "pre_install"
@@ -62,6 +65,27 @@ configure_systemd_process_limits() {
 update_system() {
   os_pkg_repo_update
   os_pkg_system_update
+}
+
+enable_unattended_updates() {
+  echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
+  os_pkg_install unattended-upgrades apt-listchanges
+  os_svc_init enable unattended-upgrades
+  os_svc restart unattended-upgrades
+
+  local upgrade_reboot_cron_file="${HOME:-/root}/upgrade-reboot-cron"
+cat << 'UPGRADEREBOOTCRON' > "${upgrade_reboot_cron_file}"
+#!/usr/bin/env bash
+
+DEBIAN_FRONTEND=noninteractive apt clean -y || true
+package_list=/var/run/reboot-required.pkgs
+if [ -s "${package_list}" ] && [ "$(cat ${package_list}" | wc -l)" != "0" ]; then
+  reboot
+fi
+UPGRADEREBOOTCRON
+  chmod +x "${upgrade_reboot_cron_file}"
+
+  add_cronjob "0 2 * * 6 ${upgrade_reboot_cron_file}"
 }
 
 install_dependencies() {
@@ -266,9 +290,14 @@ persist_hook() {
   local event="${2}"
 
   is_hook_provided "${name}" || return 0
+  add_cronjob "@${event} $(command -v curl) -sL '$(hook_content "${name}")'"
+}
+
+add_cronjob() {
+  local cron_line="${*}"
   (
     crontab -l 2>/dev/null || true
-    echo "@${event} $(command -v curl) -sL '$(hook_content "${name}")'"
+    echo "${cron_line}"
   ) | crontab -
 }
 
@@ -288,7 +317,7 @@ get_hostname() {
 generate_passwd() { < /dev/urandom tr -dc '_A-Z-a-z-0-9@#' | head -c8; }
 is_command_present() { command -v "${1}" >/dev/null 2>&1; }
 
-os_pkg_install() { DEBIAN_FRONTEND=noninteractive apt install -y "${@}"; }
+os_pkg_install() { apt install -y "${@}"; }
 os_pkg_repo_update() { apt update; }
 os_pkg_system_update() { apt upgrade -y; }
 os_firewall() { ufw "${@}"; }
