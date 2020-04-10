@@ -32,12 +32,12 @@ cp ./jitsiinstallrc.example ./jitsiinstallrc
 Setting up a Jitsi server with this automated installer only requires the 
 following 3 steps:
 
-1. Create a `jitsiinstallrc` file in the project root by copying the
-`jitsiinstallrc.example` file
+1. Create a `jitsiinstallrc` configuration file in the project root by copying 
+the `jitsiinstallrc.example` file
 1. Adjust the configuration options as needed.
 Most configuration options are optional. If no value is provided, the defaults
 will be used/no changes will be made.
-1. Run the installer as root or using `sudo`: `./installer/install-jitsi.sh`
+1. Run the installer as root or using `sudo`: `./installer/install-jitsi-meet`
 
 
 ## Test/develop locally using Vagrant
@@ -45,12 +45,12 @@ will be used/no changes will be made.
 With `vagrant` installed, simply run `vagrant up` to create a virtual machine
 that will automatically run the installer on boot.
 
-The IP address of the virtual machine will be `10.0.3.33`; to reach the Jitsi 
+The IP address of the virtual machine will be `10.0.3.10`; to reach the Jitsi 
 server from the host system, ensure that the domain is properly mapped to that 
 IP address, for instance by executing:
 ```
 source jitsiinstallrc
-echo "10.0.3.33 ${FULLY_QUALIFIED_HOSTNAME}" >> /etc/hosts
+echo "10.0.3.10 ${FULLY_QUALIFIED_HOSTNAME}" >> /etc/hosts
 ```
 
 **Note:** When running it locally the SSL setup using letsencrypt will not work 
@@ -65,6 +65,7 @@ The automated installer will setup:
 - Jitsi using Java 8 behind nginx
 - SSL certificate (using )
 - Selected Jitsi configuration options
+- Unattended updates (server will restart Sun between 2am and 3am, if a restart is required)
 
 ### Configuration features
 

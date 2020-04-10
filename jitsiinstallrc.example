@@ -3,6 +3,7 @@ FULLY_QUALIFIED_HOSTNAME=meet.example.com
 
 # Set to true to keep SSH port open in firewall
 FIREWALL_ENABLE_SSH=true
+FIREWALL_ENABLE_VIDEO_BRIDGE_HOST=true
 
 #
 # Leave values for OPTIONAL attributes empty or comment out if not needed
@@ -31,6 +32,9 @@ FIREWALL_ENABLE_SSH=true
 #JITSI_MEETING_CREATOR_USERNAME=host
 #JITSI_MEETING_CREATOR_PASSWORD=pass123
 
+# OPTIONAL:
+# Connection secret for other video bridges
+#JITSI_MEET_SERVER_VIDEOBRIDGE_SECRET=password1
 
 # OPTIONAL:
 # Original dimensions 612x272 px

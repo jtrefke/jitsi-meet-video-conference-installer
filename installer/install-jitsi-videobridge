@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -e
+
+SCRIPT_DIR="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
+INSTALL_ROOT="$(dirname "${SCRIPT_DIR}")"
+JITSIRC_PATH="${INSTALL_ROOT}/jitsibridgeinstallrc"
+LIB_PATH="${SCRIPT_DIR}/lib"
+
+# shellcheck source=../lib/functions.sh
+source "${LIB_PATH}/functions.sh"
+# shellcheck source=../lib/jitsi.sh
+source "${LIB_PATH}/jitsi.sh"
+
+main() {
+  is_root || die "This script must be executed as root!"
+  [ -s "${JITSIRC_PATH}" ] || die "Jitsi installer config not found at '${JITSIRC_PATH}'!"
+
+  # shellcheck source=./jitsirc
+  source "${JITSIRC_PATH}"
+
+  set -u
+
+  os_pkg_install curl
+  log "Setup hostname..."; setup_hostname
+  log "Setup firewall..."; setup_firewall
+  log "Update system..."; update_system
+  log "Enable automatic security updates..."; enable_unattended_updates
+  log "Configure systemd process limits..."; configure_systemd_process_limits
+
+  log "Invoking pre install hooks..."; invoke_hook "pre_install"
+
+  log "Install dependencies..."; install_dependencies
+  log "Install Jitsi..."; install_jitsi_videobridge
+
+  log "Configure videobridge/host settings..."; configure_jitsi_videobridge
+
+  log "Ensure Jitsi started..."; ensure_jitsi_videobridge_started
+  log "Validate Jitsi install..."; validate_jitsi_videobridge_install
+
+  log "Invoking post install hooks..."; invoke_hook "post_install"
+  log "Persisting post install hooks..."; persist_hook "post_install" "reboot"
+}
+
+setup_firewall() {
+  os_firewall allow 443/tcp
+  os_firewall allow 4443/tcp
+  os_firewall allow 10000:20000/udp
+
+  [ "${FIREWALL_ENABLE_SSH:-}" != "true" ] || os_firewall allow OpenSSH
+  os_firewall --force enable
+  os_svc restart ufw
+}
+
+install_dependencies() {
+  install_java
+
+  os_pkg_install debconf-utils
+}
+
+install_jitsi_videobridge() {
+  echo 'deb https://download.jitsi.org stable/' >> /etc/apt/sources.list.d/jitsi-stable.list
+  curl -s https://download.jitsi.org/jitsi-key.gpg.key | apt-key add -
+  os_pkg_install apt-transport-https
+  os_pkg_repo_update
+
+  echo "jitsi-videobridge2 jitsi-videobridge/jvb-hostname string ${JITSI_MEET_SERVER_DOMAIN_NAME}" | debconf-set-selections
+  echo "jitsi-videobridge2 jitsi-videobridge/jvbsecret password $(generate_passwd)" | debconf-set-selections
+  os_pkg_install jitsi-videobridge2
+}
+
+configure_jitsi_videobridge() {
+  ensure_key_value_present /etc/jitsi/videobridge/sip-communicator.properties \
+    "org.jitsi.videobridge.xmpp.user.shard.PASSWORD" "${JITSI_MEET_SERVER_VIDEOBRIDGE_SECRET}"
+  ensure_key_value_present /etc/jitsi/videobridge/sip-communicator.properties \
+    "org.jitsi.videobridge.xmpp.user.shard.HOSTNAME" "${JITSI_MEET_SERVER_DOMAIN_NAME}"
+  ensure_key_value_present /etc/jitsi/videobridge/sip-communicator.properties \
+    "org.jitsi.videobridge.xmpp.user.shard.DOMAIN" "auth.${JITSI_MEET_SERVER_DOMAIN_NAME}"
+  ensure_key_value_present /etc/jitsi/videobridge/sip-communicator.properties \
+    "org.jitsi.videobridge.xmpp.user.shard.DISABLE_CERTIFICATE_VERIFICATION" "true"
+}
+
+ensure_jitsi_videobridge_started() {
+  ensure_services_restarted "jitsi-videobridge2"
+}
+
+validate_jitsi_videobridge_install() {
+  sleep 10
+  [ ! -f /var/log/jitsi/jicofo.log ] || \
+    tail -15 /var/log/jitsi/jicofo.log | grep -qE "INFO.*:.*Added.*videobridge:.*@internal.auth.${JITSI_MEET_SERVER_DOMAIN_NAME}/"
+
+  # [ ! -f /var/log/jitsi/jvb.log ] || \
+  #   tail -15 /var/log/jitsi/jvb.log | grep -qE "INFO.*:.*Added.*videobridge:.*@internal.auth.${JITSI_MEET_SERVER_DOMAIN_NAME}/"
+}
+
+main "${@}"

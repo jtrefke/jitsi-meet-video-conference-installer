@@ -1,0 +1,18 @@
+# Hostname for this meet installation
+#FULLY_QUALIFIED_HOSTNAME=meet.example.com
+
+# Set to true to keep SSH port open in firewall
+FIREWALL_ENABLE_SSH=true
+
+#
+# Leave values for OPTIONAL attributes empty or comment out if not needed
+#
+
+# OPTIONAL:
+# Hooks to execute pre or post install; post install hook will also run on boot
+#HOOKS_POST_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_PRE_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_WAIT_TIME=121
+
+JITSI_MEET_SERVER_DOMAIN_NAME=meet.example.com
+JITSI_MEET_SERVER_VIDEOBRIDGE_SECRET=ef59j9tH

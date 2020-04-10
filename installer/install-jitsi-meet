@@ -4,13 +4,13 @@ set -e
 SCRIPT_DIR="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")"
 INSTALL_ROOT="$(dirname "${SCRIPT_DIR}")"
 JITSIRC_PATH="${INSTALL_ROOT}/jitsiinstallrc"
-CONFIG_PATH="${INSTALL_ROOT}/configs"
+CONFIG_PATH="${SCRIPT_DIR}/configs"
 
 export DEBIAN_FRONTEND=noninteractive
 
 main() {
   [ "$(id -u)" = "0" ] || die "This script must be executed as root!"
-  [ -s "${JITSIRC_PATH}" ] || die "jitsi installer config not found at '${JITSIRC_PATH}'!"
+  [ -s "${JITSIRC_PATH}" ] || die "Jitsi installer config not found at '${JITSIRC_PATH}'!"
 
   # shellcheck source=./jitsirc
   source "${JITSIRC_PATH}"
@@ -31,6 +31,7 @@ main() {
   log "Setup Jitsi SIP dialin..."; install_phone_dialin
   log "Install SSL certificate..."; install_ssl_certificate
   log "Enable Jitsi user authentication..."; enable_authentication
+  log "Enable Jitsi video bridge connection..."; enable_authentication
   log "Tweaking Jitsi config..."; tweak_config
 
   log "Ensure Jitsi started..."; ensure_jitsi_started
@@ -51,6 +52,7 @@ setup_firewall() {
   os_firewall allow in 10000:20000/udp
 
   [ "${FIREWALL_ENABLE_SSH:-}" != "true" ] || os_firewall allow OpenSSH
+  [ -n "${JITSI_MEET_SERVER_VIDEOBRIDGE_SECRET:-}" ] || os_firewall allow 5222/tcp
   os_firewall --force enable
   os_svc restart ufw
 }
@@ -85,14 +87,14 @@ fi
 UPGRADEREBOOTCRON
   chmod +x "${upgrade_reboot_cron_file}"
 
-  add_cronjob "0 2 * * 6 ${upgrade_reboot_cron_file}"
+  add_cronjob "$((RANDOM % 60)) 2 * * 6 ${upgrade_reboot_cron_file}"
 }
 
 install_dependencies() {
   install_java
   install_nginx
 
-  os_pkg_install debconf-utils curl
+  os_pkg_install debconf-utils
 }
 
 install_java() {
@@ -197,6 +199,9 @@ enable_authentication() {
   ensure_key_value_present /etc/jitsi/jicofo/sip-communicator.properties \
     "org.jitsi.jicofo.auth.URL" "XMPP:${fqdn}"
 
+  ensure_key_value_present /etc/jitsi/videobridge/sip-communicator.properties \
+    "org.jitsi.videobridge.xmpp.user.shard.PASSWORD" "${JITSI_MEET_SERVER_VIDEOBRIDGE_SECRET}"
+
   prosodyctl register "${JITSI_MEETING_CREATOR_USERNAME}" "${fqdn}" "${JITSI_MEETING_CREATOR_PASSWORD}"
 }
 
@@ -273,7 +278,6 @@ invoke_hook() {
 
   is_hook_provided "${name}" || return 0
 
-  is_command_present curl || os_pkg_install curl
   curl -sL "$(hook_content "${name}")"
   log "Waiting for ${HOOKS_WAIT_TIME:-} seconds..."
   sleep ${HOOKS_WAIT_TIME:-0}
