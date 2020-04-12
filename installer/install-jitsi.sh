@@ -32,6 +32,7 @@ main() {
   log "Install SSL certificate..."; install_ssl_certificate
   log "Enable Jitsi user authentication..."; enable_authentication
   log "Tweaking Jitsi config..."; tweak_config
+  log "Tweaking nginx config..."; tweak_nginx_config
 
   log "Ensure Jitsi started..."; ensure_jitsi_started
   log "Validate Jitsi install..."; validate_jitsi_install
@@ -221,6 +222,14 @@ tweak_config() {
   [ -z "${JITSI_REQUIRE_DISPLAY_NAME:-}" ] || \
     update_colon_separated_value "${js_config_file}" \
       "requireDisplayName" "${JITSI_REQUIRE_DISPLAY_NAME}"
+}
+
+tweak_nginx_config() {
+  local fqdn; fqdn=$(get_fully_qualified_hostname)
+  if [ "${#fqdn}" -gt "47" ]; then
+    sed -Ei 's/server_names_hash_bucket_size (32|64)/server_names_hash_bucket_size 128/g' \
+      "/etc/nginx/sites-available/${fqdn}.conf"
+  fi
 }
 
 update_colon_separated_value() {
