@@ -6,6 +6,8 @@ INSTALL_ROOT="$(dirname "${SCRIPT_DIR}")"
 JITSIRC_PATH="${INSTALL_ROOT}/jitsiinstallrc"
 CONFIG_PATH="${INSTALL_ROOT}/configs"
 
+PERSISTENT_INSTALL_DIR="/opt/jitsi-installer"
+
 export DEBIAN_FRONTEND=noninteractive
 
 main() {
@@ -17,7 +19,7 @@ main() {
 
   set -u
 
-  os_pkg_install curl
+  is_command_present curl || os_pkg_install curl
   log "Setup hostname..."; setup_hostname
   log "Setup firewall..."; setup_firewall
   log "Update system..."; update_system
@@ -33,6 +35,8 @@ main() {
   log "Enable Jitsi user authentication..."; enable_authentication
   log "Tweaking Jitsi config..."; tweak_config
   log "Tweaking nginx config..."; tweak_nginx_config
+
+  log "Invoking customize hooks..."; invoke_hook "customize"
 
   log "Ensure Jitsi started..."; ensure_jitsi_started
   log "Validate Jitsi install..."; validate_jitsi_install
@@ -74,7 +78,8 @@ enable_unattended_updates() {
   os_svc_init enable unattended-upgrades
   os_svc restart unattended-upgrades
 
-  local upgrade_reboot_cron_file="${HOME:-/root}/upgrade-reboot-cron"
+  mkdir -p "${PERSISTENT_INSTALL_DIR}"
+  local upgrade_reboot_cron_file="${PERSISTENT_INSTALL_DIR}/upgrade-reboot-cron"
 cat << 'UPGRADEREBOOTCRON' > "${upgrade_reboot_cron_file}"
 #!/usr/bin/env bash
 
@@ -108,8 +113,11 @@ install_nginx() {
 }
 
 install_jitsi() {
-  echo 'deb https://download.jitsi.org stable/' >> /etc/apt/sources.list.d/jitsi-stable.list
-  curl -s https://download.jitsi.org/jitsi-key.gpg.key | apt-key add -
+  local repo_entry="deb https://download.jitsi.org stable/"
+  if ! grep -Fq "${repo_entry}" /etc/apt/sources.list.d/jitsi-stable.list; then
+    echo "${repo_entry}" >> /etc/apt/sources.list.d/jitsi-stable.list
+    curl -s https://download.jitsi.org/jitsi-key.gpg.key | apt-key add -
+  fi
   os_pkg_install apt-transport-https
   os_pkg_repo_update
 
@@ -286,16 +294,37 @@ invoke_hook() {
 
   is_hook_provided "${name}" || return 0
 
-  is_command_present curl || os_pkg_install curl
-  curl -sL "$(hook_content "${name}")"
+  local hook_file_name; hook_file_name=$(mktemp)
+  write_hook_file "${name}" "${hook_file_name}"
+  ( "${hook_file_name}" )
+  rm -f "${hook_file_name}"
+
   log "Waiting for ${HOOKS_WAIT_TIME:-} seconds..."
   sleep ${HOOKS_WAIT_TIME:-0}
 }
 
+write_hook_file() {
+  local hook_name="${1}"; shift
+  local file_name="${1}"; shift
+
+  mkdir -p "$(dirname "${file_name}")"
+
+  local hook_content; hook_content="$(hook_content "${hook_name}")"
+  if starts_with_curl_url_scheme "${hook_content}"; then
+    is_command_present curl || os_pkg_install curl
+    echo "$(command -v curl) -sL '${hook_content}'" > "${file_name}"
+  else
+    <<<"${hook_content}" base64 -d > "${file_name}"
+  fi
+  chmod +x "${file_name}"
+}
+
 hook_content() {
   local name="${1}"
-  local var_name="HOOKS_${name^^}_URL"
-  echo "${!var_name:-}"
+  local var_name="HOOKS_${name^^}"
+  local alt_var_name="${var_name}_URL"
+
+  [ -n "${!var_name:-}" ] && echo "${!var_name:-}" || echo "${!alt_var_name:-}"
 }
 
 persist_hook() {
@@ -303,14 +332,18 @@ persist_hook() {
   local event="${2}"
 
   is_hook_provided "${name}" || return 0
-  add_cronjob "@${event} $(command -v curl) -sL '$(hook_content "${name}")'"
+
+  local persistent_file_name="${PERSISTENT_INSTALL_DIR}/hooks/${event}/${name}"
+  write_hook_file "${name}" "${persistent_file_name}"
+
+  add_cronjob "@${event} ${persistent_file_name}"
 }
 
 add_cronjob() {
   local cron_line="${*}"
   (
-    crontab -l 2>/dev/null || true
-    echo "${cron_line}"
+    crontab -l 2>/dev/null | grep -vF "${cron_line}" || true
+    echo "${cron_line} > /var/log/jitsi-installer-cron.log 2>&1"
   ) | crontab -
 }
 
@@ -329,6 +362,9 @@ get_hostname() {
 
 generate_passwd() { < /dev/urandom tr -dc '_A-Z-a-z-0-9@#' | head -c8; }
 is_command_present() { command -v "${1}" >/dev/null 2>&1; }
+starts_with_curl_url_scheme() {
+  <<<"${1:-}" grep -Eiq "^(dict|file|ftps?|gopher|https?|imaps?|ldaps?|mqtt|pop3s?|rtmp|rtsp|scp|sftp|smbs?|smtps?|telnet|tftp)://"
+}
 
 os_pkg_install() { apt install -y "${@}"; }
 os_pkg_repo_update() { apt update; }

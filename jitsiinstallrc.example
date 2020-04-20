@@ -10,8 +10,9 @@ FIREWALL_ENABLE_SSH=true
 
 # OPTIONAL:
 # Hooks to execute pre or post install; post install hook will also run on boot
-#HOOKS_POST_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
-#HOOKS_PRE_INSTALL_URL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_POST_INSTALL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_PRE_INSTALL='https://api.dynu.com/nic/update?hostname=meet.example.com&password=PASSWORD'
+#HOOKS_CUSTOMIZE='ZWNobyAnaGVsbG8gd29ybGQnCg=='
 #HOOKS_WAIT_TIME=121
 
 

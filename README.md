@@ -70,10 +70,16 @@ The automated installer will setup:
 
 **Hooks**
 
-Hooks will load a URL via HTTP GET before Jitsi is installed as well 
-as after the installation. The post-install hook will also run on reboot.
+Hooks will load a URL via HTTP GET before Jitsi is installed as well as
+after Jitsi has been installed and configured, and at the very end after the 
+entire installation. The final post-install hook will also run on reboot.
 These hooks can be useful in to dynamically update DNS records in an 
 unmanaged environment or when managing a dynamic machine inventory.
+
+Alternatively, a base64 encoded executable (e.g. a script) can be provided,
+that will be written to disc and then executed. 
+This might be useful if more customization beyond what the installer offers is 
+required.
 
 **SSL**
 
