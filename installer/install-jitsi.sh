@@ -222,6 +222,10 @@ tweak_config() {
   [ -z "${JITSI_REQUIRE_DISPLAY_NAME:-}" ] || \
     update_colon_separated_value "${js_config_file}" \
       "requireDisplayName" "${JITSI_REQUIRE_DISPLAY_NAME}"
+
+  [ -z "${JITSI_DISABLE_AUDIO_LEVELS:-}" ] || \
+    update_colon_separated_value "${js_config_file}" \
+      "disableAudioLevels" "${JITSI_DISABLE_AUDIO_LEVELS}"
 }
 
 tweak_nginx_config() {
